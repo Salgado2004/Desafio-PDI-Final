@@ -32,6 +32,20 @@ def stackImages(scale,imgArray):
         ver = hor
     return ver
 
+def apply_sobel(img):
+    img_gray = img
+    grad_x = cv2.Sobel(img_gray, cv2.CV_64F, 1, 0, ksize=3)
+    grad_y = cv2.Sobel(img_gray, cv2.CV_64F, 0, 1, ksize=3)
+    abs_grad_x = cv2.convertScaleAbs(grad_x)
+    abs_grad_y = cv2.convertScaleAbs(grad_y)
+    img_sobel = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
+    return img_sobel
+
+
+def apply_gabor_filter(image, ksize=31, sigma=4.0, theta=np.pi/4, lambd=10.0, gamma=0.5, psi=0):
+    kernel = cv2.getGaborKernel((ksize, ksize), sigma, theta, lambd, gamma, psi, ktype=cv2.CV_32F)
+    return cv2.filter2D(image, cv2.CV_8UC3, kernel)
+
 for i in range(6):
     # 1. Aquisição
     img = cv2.imread(f"assets/img-{i+1}.jpg")
@@ -52,20 +66,28 @@ for i in range(6):
     cv2.waitKey(0)
 
     # 3. Processamento
-    # a) Detecção de bordas (Canny)
-    edges = cv2.Canny(blurred, 50, 150)
+    # a) Detecção de bordas (Sobel + Binary Threshold)
+    sobel = apply_sobel(blurred)
+    edges = cv2.threshold(sobel, 96, 255, cv2.THRESH_BINARY)[1]
 
     # b) Análise de textura com Filtros de Gabor
-    def apply_gabor_filter(image, ksize=31, sigma=4.0, theta=np.pi/4, lambd=10.0, gamma=0.5, psi=0):
-        kernel = cv2.getGaborKernel((ksize, ksize), sigma, theta, lambd, gamma, psi, ktype=cv2.CV_32F)
-        return cv2.filter2D(image, cv2.CV_8UC3, kernel)
-
     gabor = apply_gabor_filter(enhanced)
-    
-    cv2.imshow("Processamento", stackImages(0.8, ([edges], [gabor])))
-    cv2.waitKey(0)
 
     # 4. Pós-processamento
     combined = cv2.addWeighted(edges, 0.5, gabor, 0.5, 0)
-    cv2.imshow('Resultado', combined)
+    cv2.imshow("Processamento", stackImages(0.8, ([gabor, sobel], [edges, combined])))
+    cv2.waitKey(0)
+
+    # 5. Classificação
+    dots = 0
+    contours, hierarchy = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    for c in contours:
+        area = cv2.contourArea(c)
+        x,y,w,h = cv2.boundingRect(c)
+        if area > 5 and area < 100 and y < 204 and x > 50 and x < 400:
+            cv2.drawContours(img, c, -1, (0,255,0), 2)
+            dots+=1
+    
+    cv2.imshow("Contornos detectados", img)
+    print(dots)
     cv2.waitKey(0)
