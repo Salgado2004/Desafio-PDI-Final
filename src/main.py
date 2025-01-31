@@ -41,7 +41,6 @@ def apply_sobel(img):
     img_sobel = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
     return img_sobel
 
-
 def apply_gabor_filter(image, ksize=31, sigma=4.0, theta=np.pi/4, lambd=10.0, gamma=0.5, psi=0):
     kernel = cv2.getGaborKernel((ksize, ksize), sigma, theta, lambd, gamma, psi, ktype=cv2.CV_32F)
     return cv2.filter2D(image, cv2.CV_8UC3, kernel)
@@ -73,12 +72,11 @@ for i in range(6):
     # b) Análise de textura com Filtros de Gabor
     gabor = apply_gabor_filter(enhanced)
 
-    # 4. Pós-processamento
     combined = cv2.addWeighted(edges, 0.5, gabor, 0.5, 0)
-    cv2.imshow("Processamento", stackImages(0.8, ([gabor, sobel], [edges, combined])))
+    cv2.imshow("Processamento", stackImages(0.8, ([gabor, sobel], [combined, edges])))
     cv2.waitKey(0)
 
-    # 5. Classificação
+    # 4. Classificação
     dots = 0
     contours, hierarchy = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for c in contours:
